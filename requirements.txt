@@ -1,0 +1,3 @@
+py-consul
+docker
+requests

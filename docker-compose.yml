@@ -1,0 +1,50 @@
+services:
+  consul:
+    image: consul:latest
+    container_name: consul
+    ports:
+      - "8500:8500"  # Consul UI und HTTP API
+      - "8600:8600/udp"  # DNS Interface
+    command: "agent -server -bootstrap-expect=1 -ui -client=0.0.0.0"
+    networks:
+      - dockul-net
+
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.consul.endpoints=consul:8500"
+      - "--providers.consul.rootKey=traefik"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+    ports:
+      - "80:80"      # HTTP
+      - "443:443"    # HTTPS
+      - "8080:8080"  # Traefik Dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - dockul-net
+    depends_on:
+      - consul
+
+  dockul:
+    build: .
+    container_name: dockul
+    environment:
+      - CONSUL_HOST=consul
+      - SERVICE_PREFIX=dockul
+      - FILTER_NETWORK_NAME=dockul-net
+      - DEBUG=false
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - dockul-net
+    depends_on:
+      - consul
+      - traefik
+
+networks:
+  dockul-net:
+    name: dockul-net 
